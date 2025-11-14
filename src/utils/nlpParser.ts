@@ -41,7 +41,6 @@ const stylePatterns = {
 }
 
 export function parseNaturalLanguage(input: string): ParsedPreferences {
-  const lowerInput = input.toLowerCase()
   const extracted: ParsedPreferences = {
     artStyles: [],
     characters: [],

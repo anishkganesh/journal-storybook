@@ -216,7 +216,7 @@ Rules:
           n: 1,
         })
 
-        const imageUrl = imageResponse.data[0]?.url || ''
+        const imageUrl = imageResponse.data?.[0]?.url || ''
         images.push({ sentence: sentences[i], imageUrl })
 
         // Rate limiting
