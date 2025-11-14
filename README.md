@@ -1,20 +1,23 @@
-# Journal to Storybook
+# Journal to Storybook ✨
 
 Transform your handwritten journal entries into beautiful illustrated storybooks using AI!
 
-## Features
+Built with a modern chat-based UI, natural language parsing, and the power of OpenAI's GPT-4o and DALL-E 3.
 
-- **OCR (Optical Character Recognition)**: Upload a photo of your handwritten journal entry and extract the text using OpenAI's GPT-4o-mini Vision API
-- **Story Generation**: Automatically expand your journal entry into an engaging 4-sentence children's story
-- **Art Style Selection**: Choose from 4 different art styles:
-  - Anime (Studio Ghibli inspired)
-  - Watercolor
-  - 3D Cartoon (Pixar-style)
-  - Classic Storybook
-- **Image Generation**: Generate 4 beautiful illustrations using DALL-E 3, one for each sentence
-- **Consistent Style**: Character descriptions are extracted and maintained across all images for visual consistency
+## 🎨 Features
 
-## Cost Estimate
+- **Chat-Based Interface**: Intuitive chat UI with minimal, professional design using Geist font
+- **OCR (Optical Character Recognition)**: Upload photos of handwritten journal entries - AI reads your handwriting using GPT-4o-mini Vision
+- **Natural Language Parsing**: Describe your preferred style in plain English
+  - "Make it anime style with a brave knight"
+  - "Watercolor with soft colors and a young girl"
+  - "3D Pixar style with a playful character"
+- **Smart Story Generation**: Automatically expands your journal into engaging 4-sentence children's stories
+- **DALL-E 3 Image Generation**: Creates 4 beautiful, consistent illustrations
+- **Character Consistency**: Maintains the same character appearance across all images
+- **Multiple Art Styles**: Anime, watercolor, 3D cartoon, storybook, and more via natural language
+
+## 💰 Cost Estimate
 
 Generating a complete storybook costs approximately **$0.17-0.35**:
 - OCR: ~$0.003 per image
@@ -22,35 +25,37 @@ Generating a complete storybook costs approximately **$0.17-0.35**:
 - 4 images (standard quality): $0.16
 - 4 images (HD quality): $0.32
 
-## How to Use
+Much cheaper than traditional illustration services!
 
-1. **The development server is running at http://localhost:5173/**
+## 🚀 Quick Start
 
-2. **Upload a handwritten journal entry**
-   - Take a photo of your journal entry
-   - Drag and drop or click to upload
-   - Supports JPG, PNG, HEIC formats
+### Using the Chat Interface
 
-3. **Extract text**
-   - Click "Extract Text" button
-   - Review and edit the extracted text if needed
+1. **Attach your journal photo** using the paperclip icon
+2. **Optionally add style instructions** like "anime style" or "with a princess character"
+3. **Send** and watch the AI:
+   - Read your handwriting
+   - Generate a story
+   - Create 4 illustrated pages
+   - Display your complete storybook!
 
-4. **Choose an art style**
-   - Select from Anime, Watercolor, 3D Cartoon, or Classic Storybook
+### Example Prompts
 
-5. **Generate your storybook**
-   - Click "Generate Storybook"
-   - Wait ~30-60 seconds for the AI to create your story and images
-   - View your completed storybook!
+- Just upload an image → Default storybook style
+- "Make it anime style" → Studio Ghibli-inspired art
+- "Watercolor with a boy character" → Custom style + character
+- "Pixar 3D with dramatic lighting" → Specific style preferences
 
 ## Technical Details
 
 ### Technologies Used
 
 - **Frontend**: React + TypeScript + Vite
-- **UI Components**: shadcn/ui (Tailwind CSS)
-- **File Upload**: react-dropzone
+- **UI Components**: shadcn/ui (Tailwind CSS v4)
+- **Typography**: Geist Sans & Geist Mono fonts
+- **Natural Language Processing**: Custom parser for style extraction
 - **AI APIs**: OpenAI (GPT-4o-mini + DALL-E 3)
+- **Deployment**: Vercel-ready configuration
 
 ### Workflow
 
