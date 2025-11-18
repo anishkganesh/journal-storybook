@@ -223,7 +223,7 @@ Rules:
       for (let i = 0; i < sentences.length; i++) {
         setProgress(50 + ((i + 1) / sentences.length) * 45)
 
-        const prompt = buildPromptFromParsed(sentences[i], parsed, characterDesc)
+        const prompt = buildPromptFromParsed(sentences[i], parsed, characterDesc, i + 1, sentences.length)
 
         const imageResponse = await openai.images.generate({
           model: 'dall-e-3',

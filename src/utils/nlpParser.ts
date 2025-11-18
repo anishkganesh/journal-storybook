@@ -68,71 +68,114 @@ export function parseNaturalLanguage(input: string): ParsedPreferences {
 export function buildPromptFromParsed(
   baseStory: string,
   parsed: ParsedPreferences,
-  characterDesc?: string
+  characterDesc?: string,
+  imageIndex?: number,
+  totalImages?: number
 ): string {
   const parts: string[] = []
 
-  // CRITICAL: Character must come FIRST and be very explicit
+  // ULTRA-CRITICAL: Character consistency with extreme detail
   if (characterDesc) {
-    // Extract key physical features to emphasize
-    const skinToneMatch = characterDesc.match(/(light|dark|pale|tan|brown|fair|olive|bronze)[\s-]?(?:skinned|skin|complexion)?/i)
-    const hairMatch = characterDesc.match(/(blonde|brown|black|red|curly|straight|wavy|short|long|afro|braided|tousled)[\s-]?(?:hair)?/gi)
-    const eyeMatch = characterDesc.match(/(blue|brown|green|hazel|bright|curious|wide)[\s-]?(?:eyes)?/i)
-    const ageMatch = characterDesc.match(/(\d+)[\s-]?(?:year|years)[\s-]?old/i) || characterDesc.match(/(child|toddler|kid|boy|girl)/i)
-    const clothingMatch = characterDesc.match(/(?:wearing|dressed in|t-shirt|shorts|shirt|pants|dress|featuring)[\s\w-]+/gi)
+    // Extract EVERY physical detail for maximum consistency
+    const skinToneMatch = characterDesc.match(/(light|dark|pale|tan|brown|fair|olive|bronze|beige|peachy|warm|cool)[\s-]?(?:skinned|skin|complexion|tone)?/gi)
+    const hairColorMatch = characterDesc.match(/(blonde|brown|black|red|auburn|chestnut|dark|light|golden|sandy)[\s-]?(?:hair)?/gi)
+    const hairStyleMatch = characterDesc.match(/(curly|straight|wavy|short|long|afro|braided|tousled|messy|neat|spiky|fluffy|bouncy)[\s-]?(?:hair)?/gi)
+    const eyeColorMatch = characterDesc.match(/(blue|brown|green|hazel|amber|gray|dark)[\s-]?(?:eyes?|eyed)?/gi)
+    const eyeDescMatch = characterDesc.match(/(bright|curious|wide|large|round|expressive|sparkly|shining)[\s-]?(?:eyes)?/gi)
+    const ageMatch = characterDesc.match(/(\d+)[\s-]?(?:year|years)[\s-]?old/i) || characterDesc.match(/(young child|child|toddler|kid|boy|girl)/i)
+    const clothingMatch = characterDesc.match(/(?:wearing|dressed in|t-shirt|shorts|shirt|pants|dress|vest|jacket|featuring|colorful)[\s\w-]+/gi)
+    const facialMatch = characterDesc.match(/(freckles|dimples|round face|cheeks|smile|grin|tooth|teeth|button nose|small nose)/gi)
 
-    parts.push(`IMPORTANT - MAINTAIN EXACT SAME CHARACTER IN ALL IMAGES: ${characterDesc}`)
+    // Build EXTREMELY detailed character specification
+    const detailedFeatures: string[] = []
 
-    // Add redundant emphasis on key features
-    const keyFeatures: string[] = []
-    if (skinToneMatch) keyFeatures.push(`MUST have ${skinToneMatch[0]} skin tone`)
-    if (hairMatch && hairMatch.length > 0) keyFeatures.push(`MUST have ${hairMatch.join(' ')} hair`)
-    if (eyeMatch) keyFeatures.push(`MUST have ${eyeMatch[0]} eyes`)
-    if (ageMatch) keyFeatures.push(`MUST be ${ageMatch[0]}`)
-    if (clothingMatch && clothingMatch.length > 0) keyFeatures.push(`MUST wear ${clothingMatch.join(', ')}`)
-
-    if (keyFeatures.length > 0) {
-      parts.push(`CHARACTER CONSISTENCY CRITICAL: ${keyFeatures.join('. ')}. DO NOT change character's appearance, skin tone, hair, or clothing between images`)
+    // Skin tone - be VERY specific
+    if (skinToneMatch && skinToneMatch.length > 0) {
+      detailedFeatures.push(`EXACT skin tone: ${skinToneMatch.join(' ')} - NO variation allowed`)
     }
+
+    // Hair - color AND style must match
+    const hairDetails: string[] = []
+    if (hairColorMatch && hairColorMatch.length > 0) hairDetails.push(hairColorMatch.join(' '))
+    if (hairStyleMatch && hairStyleMatch.length > 0) hairDetails.push(hairStyleMatch.join(' '))
+    if (hairDetails.length > 0) {
+      detailedFeatures.push(`EXACT hair: ${hairDetails.join(' ')} hair - same color, same style, same volume in EVERY image`)
+    }
+
+    // Eyes - color AND expression
+    const eyeDetails: string[] = []
+    if (eyeColorMatch && eyeColorMatch.length > 0) eyeDetails.push(eyeColorMatch.join(' '))
+    if (eyeDescMatch && eyeDescMatch.length > 0) eyeDetails.push(eyeDescMatch.join(' '))
+    if (eyeDetails.length > 0) {
+      detailedFeatures.push(`EXACT eyes: ${eyeDetails.join(' ')} eyes - same color, same size, same shape`)
+    }
+
+    // Age
+    if (ageMatch) {
+      detailedFeatures.push(`EXACT age: ${ageMatch[0]} - same proportions and maturity level`)
+    }
+
+    // Clothing
+    if (clothingMatch && clothingMatch.length > 0) {
+      detailedFeatures.push(`EXACT outfit: ${clothingMatch.join(', ')} - identical clothing in every scene`)
+    }
+
+    // Facial features
+    if (facialMatch && facialMatch.length > 0) {
+      detailedFeatures.push(`EXACT facial features: ${facialMatch.join(', ')} - must appear identically`)
+    }
+
+    // FIRST LINE: Complete character description
+    parts.push(`[IMAGE ${imageIndex || 1} OF ${totalImages || 4}] SAME CHARACTER AS ALL OTHER IMAGES: ${characterDesc}`)
+
+    // SECOND LINE: Extracted detailed features
+    if (detailedFeatures.length > 0) {
+      parts.push(`MANDATORY CONSISTENCY - ${detailedFeatures.join(' | ')} | This is the SAME person in all ${totalImages || 4} images`)
+    }
+
+    // THIRD LINE: Absolute prohibitions
+    parts.push(`PROHIBITED: Changing skin color, hair color, hair style, eye color, clothing, age, or any facial features between images. All ${totalImages || 4} images show the IDENTICAL character`)
   }
 
-  // Art style
+  // Art style - with CONSISTENT style tokens
+  let styleDescription = ''
   if (parsed.artStyles.length > 0) {
     const style = parsed.artStyles[0]
     if (style.includes('anime') || style.includes('manga')) {
-      parts.push('Vibrant anime style illustration, Studio Ghibli inspired, soft pastel colors, expressive character design, whimsical and warm atmosphere')
+      styleDescription = 'Vibrant anime style illustration, Studio Ghibli inspired, soft pastel colors, expressive character design, whimsical and warm atmosphere, consistent anime art style'
     } else if (style.includes('watercolor')) {
-      parts.push('Soft watercolor painting, gentle brushstrokes, pastel colors, dreamy children\'s book illustration, flowing and ethereal')
+      styleDescription = 'Soft watercolor painting, gentle brushstrokes, pastel colors, dreamy children\'s book illustration, flowing and ethereal, consistent watercolor technique'
     } else if (style.includes('3d') || style.includes('pixar')) {
-      parts.push('Cute 3D illustration, Pixar-style, rounded features, volumetric lighting, glossy cartoon rendering')
+      styleDescription = 'Cute 3D illustration, Pixar-style, rounded features, volumetric lighting, glossy cartoon rendering, consistent 3D rendering style'
     } else {
-      parts.push(`${style} style illustration`)
+      styleDescription = `${style} style illustration with consistent visual approach`
     }
   } else {
     // Default to storybook style
-    parts.push('Classic children\'s storybook illustration, warm inviting colors, detailed but not cluttered, traditional book art')
+    styleDescription = 'Classic children\'s storybook illustration, warm inviting colors, detailed but not cluttered, traditional book art, consistent storybook aesthetic'
   }
+  parts.push(styleDescription)
 
   // Base story/scene
-  parts.push(`Scene: ${baseStory}`)
+  parts.push(`Scene showing: ${baseStory}`)
 
   // Mood/atmosphere
   if (parsed.moods.length > 0) {
-    parts.push(`${parsed.moods[0]} atmosphere`)
+    parts.push(`${parsed.moods[0]} atmosphere maintained consistently`)
   }
 
-  // Lighting
+  // Lighting - must be consistent
   if (parsed.lighting.length > 0) {
-    parts.push(parsed.lighting[0])
+    parts.push(`${parsed.lighting[0]} with same lighting quality throughout the series`)
   }
 
-  // Color palette
+  // Color palette - enforce consistency
   if (parsed.colors.length > 0) {
-    parts.push(`${parsed.colors[0]} color palette`)
+    parts.push(`${parsed.colors[0]} color palette - use EXACT same color scheme as other images`)
   }
 
-  // Final consistency reminder
-  parts.push('Child-friendly, engaging composition, suitable for children\'s storybook. CRITICAL: Keep the SAME character with identical physical features throughout')
+  // Final multi-layered consistency enforcement
+  parts.push('ESSENTIAL REQUIREMENTS: (1) Same character in all images - identical appearance (2) Same art style and technique (3) Consistent lighting and colors (4) Child-friendly storybook quality (5) This image must look like it belongs to the same visual series as the other images')
 
   return parts.join('. ')
 }
