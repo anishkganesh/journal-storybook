@@ -201,7 +201,7 @@ Rules:
 
       // Display character and style information
       addMessage({
-        text: `**Character:** ${characterDesc}\n\n**Style:** ${styleInfo}`,
+        text: `Character: ${characterDesc}\n\nStyle: ${styleInfo}`,
         isUser: false,
         type: 'info'
       })
@@ -447,7 +447,14 @@ Rules:
                   {message.type === 'info' && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <div className="prose dark:prose-invert max-w-none">
-                        <p className="text-sm leading-6 text-gray-800 dark:text-gray-100 whitespace-pre-wrap m-0">{message.text}</p>
+                        {message.text.split('\n\n').map((section, idx) => {
+                          const [label, ...content] = section.split(': ')
+                          return (
+                            <p key={idx} className="text-sm leading-6 text-gray-800 dark:text-gray-100 m-0 mb-2 last:mb-0">
+                              <strong className="font-semibold">{label}:</strong> {content.join(': ')}
+                            </p>
+                          )
+                        })}
                       </div>
                     </div>
                   )}

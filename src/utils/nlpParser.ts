@@ -72,6 +72,30 @@ export function buildPromptFromParsed(
 ): string {
   const parts: string[] = []
 
+  // CRITICAL: Character must come FIRST and be very explicit
+  if (characterDesc) {
+    // Extract key physical features to emphasize
+    const skinToneMatch = characterDesc.match(/(light|dark|pale|tan|brown|fair|olive|bronze)[\s-]?(?:skinned|skin|complexion)?/i)
+    const hairMatch = characterDesc.match(/(blonde|brown|black|red|curly|straight|wavy|short|long|afro|braided|tousled)[\s-]?(?:hair)?/gi)
+    const eyeMatch = characterDesc.match(/(blue|brown|green|hazel|bright|curious|wide)[\s-]?(?:eyes)?/i)
+    const ageMatch = characterDesc.match(/(\d+)[\s-]?(?:year|years)[\s-]?old/i) || characterDesc.match(/(child|toddler|kid|boy|girl)/i)
+    const clothingMatch = characterDesc.match(/(?:wearing|dressed in|t-shirt|shorts|shirt|pants|dress|featuring)[\s\w-]+/gi)
+
+    parts.push(`IMPORTANT - MAINTAIN EXACT SAME CHARACTER IN ALL IMAGES: ${characterDesc}`)
+
+    // Add redundant emphasis on key features
+    const keyFeatures: string[] = []
+    if (skinToneMatch) keyFeatures.push(`MUST have ${skinToneMatch[0]} skin tone`)
+    if (hairMatch && hairMatch.length > 0) keyFeatures.push(`MUST have ${hairMatch.join(' ')} hair`)
+    if (eyeMatch) keyFeatures.push(`MUST have ${eyeMatch[0]} eyes`)
+    if (ageMatch) keyFeatures.push(`MUST be ${ageMatch[0]}`)
+    if (clothingMatch && clothingMatch.length > 0) keyFeatures.push(`MUST wear ${clothingMatch.join(', ')}`)
+
+    if (keyFeatures.length > 0) {
+      parts.push(`CHARACTER CONSISTENCY CRITICAL: ${keyFeatures.join('. ')}. DO NOT change character's appearance, skin tone, hair, or clothing between images`)
+    }
+  }
+
   // Art style
   if (parsed.artStyles.length > 0) {
     const style = parsed.artStyles[0]
@@ -87,11 +111,6 @@ export function buildPromptFromParsed(
   } else {
     // Default to storybook style
     parts.push('Classic children\'s storybook illustration, warm inviting colors, detailed but not cluttered, traditional book art')
-  }
-
-  // Character description
-  if (characterDesc) {
-    parts.push(`Main character: ${characterDesc}`)
   }
 
   // Base story/scene
@@ -112,8 +131,8 @@ export function buildPromptFromParsed(
     parts.push(`${parsed.colors[0]} color palette`)
   }
 
-  // Consistency requirements
-  parts.push('Consistency requirements: maintain exact same character appearance and features, use the same color palette and lighting style, child-friendly, engaging composition, suitable for children\'s storybook')
+  // Final consistency reminder
+  parts.push('Child-friendly, engaging composition, suitable for children\'s storybook. CRITICAL: Keep the SAME character with identical physical features throughout')
 
   return parts.join('. ')
 }
