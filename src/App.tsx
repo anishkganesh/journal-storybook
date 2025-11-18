@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Paperclip, Send, ImageIcon, Loader2, Sparkles } from 'lucide-react'
+import { Paperclip, Send, ImageIcon, Loader2, RotateCcw, Download, MessageSquarePlus, Copy, Check } from 'lucide-react'
 import OpenAI from 'openai'
 import { parseNaturalLanguage, buildPromptFromParsed, extractCharacterHints } from './utils/nlpParser'
 
@@ -11,9 +11,11 @@ interface Message {
   isUser: boolean
   timestamp: string
   imageUrl?: string
-  type?: 'text' | 'image' | 'story' | 'storybook'
+  type?: 'text' | 'image' | 'story' | 'storybook' | 'info'
   images?: { sentence: string; imageUrl: string }[]
   story?: string
+  characterDesc?: string
+  styleInfo?: string
 }
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
   const [progress, setProgress] = useState<number>(0)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [lastStorybook, setLastStorybook] = useState<Message | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -188,11 +192,18 @@ Rules:
 
       const characterDesc = charResponse.choices[0]?.message.content || ''
 
+      // Determine style information
+      const styleInfo = parsed.artStyles.length > 0
+        ? `${parsed.artStyles.join(', ')}${parsed.moods.length > 0 ? ` with ${parsed.moods.join(', ')} mood` : ''}`
+        : 'Classic children\'s storybook style'
+
       setProgress(55)
+
+      // Display character and style information
       addMessage({
-        text: `Character determined: ${characterDesc}`,
+        text: `**Character:** ${characterDesc}\n\n**Style:** ${styleInfo}`,
         isUser: false,
-        type: 'text'
+        type: 'info'
       })
 
       // Step 5: Generate images
@@ -234,13 +245,20 @@ Rules:
 
       setProgress(100)
 
-      addMessage({
-        text: 'Your storybook is ready! ✨',
+      const storybookMessage: Message = {
+        id: Date.now(),
+        text: 'Your storybook is ready!',
         isUser: false,
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
         type: 'storybook',
         images,
-        story
-      })
+        story,
+        characterDesc,
+        styleInfo
+      }
+
+      setMessages(prev => [...prev, storybookMessage])
+      setLastStorybook(storybookMessage)
 
     } catch (err) {
       addMessage({
@@ -251,6 +269,104 @@ Rules:
     } finally {
       setIsProcessing(false)
       setProgress(0)
+    }
+  }
+
+  const handleNewChat = () => {
+    setMessages([{
+      id: Date.now(),
+      text: 'Hi! Upload a photo of your handwritten journal entry, and I\'ll transform it into a beautiful storybook. You can also tell me what style you\'d like - anime, watercolor, 3D, or describe your character!',
+      isUser: false,
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      type: 'text'
+    }])
+    setLastStorybook(null)
+    setInputMessage('')
+    setSelectedFile(null)
+  }
+
+  const handleCopy = async (text: string, messageId: number) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(messageId)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleDownload = (message: Message) => {
+    if (!message.images || !message.story) return
+
+    // Create HTML content for the storybook
+    let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My Storybook</title>
+  <style>
+    body { font-family: 'Georgia', serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    .page { background: white; padding: 40px; margin-bottom: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); page-break-after: always; }
+    .page img { width: 100%; border-radius: 8px; margin-bottom: 20px; }
+    .page p { font-size: 18px; line-height: 1.6; color: #333; text-align: center; }
+    .title { font-size: 32px; text-align: center; margin-bottom: 40px; color: #2c3e50; }
+    @media print { body { background: white; } .page { box-shadow: none; } }
+  </style>
+</head>
+<body>
+  <h1 class="title">My Storybook</h1>
+`
+
+    message.images.forEach((item, index) => {
+      htmlContent += `
+  <div class="page">
+    <img src="${item.imageUrl}" alt="Page ${index + 1}">
+    <p>${item.sentence}</p>
+  </div>
+`
+    })
+
+    htmlContent += `
+</body>
+</html>
+`
+
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `storybook-${Date.now()}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleRegenerate = async () => {
+    if (!lastStorybook) return
+
+    // Find the original user message with the image
+    const userMessages = messages.filter(m => m.isUser && m.type === 'image')
+    const lastUserMessage = userMessages[userMessages.length - 1]
+
+    if (!lastUserMessage) return
+
+    // Remove all messages after the user's upload
+    const userMessageIndex = messages.findIndex(m => m.id === lastUserMessage.id)
+    setMessages(messages.slice(0, userMessageIndex + 1))
+    setLastStorybook(null)
+
+    // Re-fetch the file from the blob URL and reprocess
+    try {
+      const response = await fetch(lastUserMessage.imageUrl!)
+      const blob = await response.blob()
+      const file = new File([blob], 'journal.jpg', { type: blob.type })
+      await processJournalEntry(file, lastUserMessage.text !== '📎 Image attached' ? lastUserMessage.text : undefined)
+    } catch (err) {
+      addMessage({
+        text: 'Failed to regenerate. Please upload the image again.',
+        isUser: false,
+        type: 'text'
+      })
     }
   }
 
@@ -280,99 +396,158 @@ Rules:
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Journal to Storybook</h1>
-          <p className="text-xs text-muted-foreground">Transform handwritten memories into illustrated stories</p>
+    <div className="flex flex-col h-screen bg-white dark:bg-[#212121]">
+      {/* Header - ChatGPT style */}
+      <div className="sticky top-0 z-10 border-b border-black/10 dark:border-white/10 bg-white dark:bg-[#212121]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Storybook AI</h1>
+          </div>
+          <Button
+            onClick={handleNewChat}
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+            disabled={isProcessing}
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            New chat
+          </Button>
         </div>
-        <Sparkles className="h-5 w-5 text-primary" />
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      {/* Messages - ChatGPT style */}
+      <div className="flex-1 overflow-y-auto">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex items-start gap-3 ${message.isUser ? 'flex-row-reverse' : ''}`}
+            className={`group ${message.isUser ? 'bg-white dark:bg-[#212121]' : 'bg-gray-50 dark:bg-[#444654]'} border-b border-black/10 dark:border-white/10`}
           >
-            {/* Avatar */}
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-              message.isUser
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground'
-            }`}>
-              {message.isUser ? 'You' : 'AI'}
-            </div>
-
-            {/* Message bubble */}
-            <div className={`flex flex-col gap-2 max-w-[80%] ${message.isUser ? 'items-end' : 'items-start'}`}>
-              {/* Text content */}
-              {message.text && (
-                <div className={`rounded-2xl px-4 py-2.5 ${
+            <div className="max-w-3xl mx-auto px-4 py-6">
+              <div className="flex gap-4">
+                {/* Avatar */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-sm flex items-center justify-center text-xs font-medium ${
                   message.isUser
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-green-600 text-white'
                 }`}>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                  {message.isUser ? 'Y' : 'AI'}
                 </div>
-              )}
 
-              {/* Image preview */}
-              {message.type === 'image' && message.imageUrl && (
-                <img
-                  src={message.imageUrl}
-                  alt="Uploaded journal"
-                  className="rounded-lg max-w-sm border shadow-sm"
-                />
-              )}
+                {/* Message content */}
+                <div className="flex-1 min-w-0">
+                  {/* Text content */}
+                  {message.text && message.type !== 'info' && (
+                    <div className="prose dark:prose-invert max-w-none">
+                      <p className="text-base leading-7 text-gray-800 dark:text-gray-100 whitespace-pre-wrap m-0">{message.text}</p>
+                    </div>
+                  )}
 
-              {/* Storybook display */}
-              {message.type === 'storybook' && message.images && (
-                <div className="space-y-4 w-full">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {message.images.map((item, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="relative aspect-square rounded-lg overflow-hidden border shadow-md">
-                          <img
-                            src={item.imageUrl}
-                            alt={`Page ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
-                            Page {index + 1}
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground italic leading-relaxed">
-                          {item.sentence}
-                        </p>
+                  {/* Info box for character and style */}
+                  {message.type === 'info' && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="prose dark:prose-invert max-w-none">
+                        <p className="text-sm leading-6 text-gray-800 dark:text-gray-100 whitespace-pre-wrap m-0">{message.text}</p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  )}
 
-              {/* Timestamp */}
-              <span className="text-[10px] text-muted-foreground px-2">
-                {message.timestamp}
-              </span>
+                  {/* Image preview */}
+                  {message.type === 'image' && message.imageUrl && (
+                    <img
+                      src={message.imageUrl}
+                      alt="Uploaded journal"
+                      className="rounded-lg max-w-md border border-gray-200 dark:border-gray-700 mt-2"
+                    />
+                  )}
+
+                  {/* Storybook display */}
+                  {message.type === 'storybook' && message.images && (
+                    <div className="space-y-4 w-full mt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {message.images.map((item, index) => (
+                          <div key={index} className="space-y-2">
+                            <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                              <img
+                                src={item.imageUrl}
+                                alt={`Page ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium">
+                                Page {index + 1}
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                              {item.sentence}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons - ChatGPT style */}
+                  {!message.isUser && message.text && (
+                    <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        onClick={() => handleCopy(message.text, message.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
+                      >
+                        {copiedId === message.id ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                      {message.type === 'storybook' && (
+                        <>
+                          <Button
+                            onClick={() => handleDownload(message)}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Download</span>
+                          </Button>
+                          <Button
+                            onClick={handleRegenerate}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+                            disabled={isProcessing}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            <span>Regenerate</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ))}
 
-        {/* Loading indicator */}
+        {/* Loading indicator - ChatGPT style */}
         {isProcessing && (
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-medium">
-              AI
-            </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing...</span>
+          <div className="bg-gray-50 dark:bg-[#444654] border-b border-black/10 dark:border-white/10">
+            <div className="max-w-3xl mx-auto px-4 py-6">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-8 h-8 rounded-sm bg-green-600 text-white flex items-center justify-center text-xs font-medium">
+                  AI
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                  <Progress value={progress} className="w-full max-w-md" />
+                </div>
               </div>
-              <Progress value={progress} className="w-full max-w-md" />
             </div>
           </div>
         )}
@@ -380,71 +555,75 @@ Rules:
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area */}
-      <div className="border-t bg-card px-4 py-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="flex items-end gap-2">
-            {/* Hidden file input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept="image/*"
-            />
-
-            {/* File attachment button */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing}
-              className="flex-shrink-0"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-
-            {/* Message input */}
-            <div className="flex-1 relative">
+      {/* Input area - ChatGPT style */}
+      <div className="border-t border-black/10 dark:border-white/10 bg-white dark:bg-[#212121]">
+        <div className="max-w-3xl mx-auto px-4 py-4">
+          <form onSubmit={handleSubmit}>
+            <div className="relative flex items-center gap-2">
+              {/* Hidden file input */}
               <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={selectedFile ? `Optional: Add style preferences or character details...` : "Type a message or attach an image..."}
-                disabled={isProcessing}
-                className="w-full px-4 py-2.5 bg-muted/50 border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept="image/*"
               />
-              {selectedFile && (
-                <div className="absolute -top-10 left-2 flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md text-xs">
-                  <ImageIcon className="h-3 w-3" />
-                  <span className="max-w-[200px] truncate">{selectedFile.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFile(null)}
-                    className="text-muted-foreground hover:text-foreground"
+
+              {/* File attachment button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessing}
+                className="flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Paperclip className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </Button>
+
+              {/* Message input container */}
+              <div className="flex-1 relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    placeholder={selectedFile ? `Optional: Add style preferences or character details...` : "Message Storybook AI..."}
+                    disabled={isProcessing}
+                    className="w-full pl-4 pr-12 py-3 bg-white dark:bg-[#40414f] border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-base text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  />
+                  {/* Send button inside input */}
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={(!inputMessage.trim() && !selectedFile) || isProcessing}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600"
                   >
-                    ×
-                  </button>
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
+                {/* File preview badge */}
+                {selectedFile && (
+                  <div className="absolute -top-10 left-0 flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-md text-xs">
+                    <ImageIcon className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                    <span className="max-w-[200px] truncate text-blue-900 dark:text-blue-100">{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Send button */}
-            <Button
-              type="submit"
-              size="icon"
-              disabled={(!inputMessage.trim() && !selectedFile) || isProcessing}
-              className="flex-shrink-0 rounded-full"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground text-center mt-2">
-            Try: "Make it anime style with a brave knight" or just upload your journal!
-          </p>
-        </form>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              Try: "Make it anime style with a brave knight" or upload your journal entry
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   )
