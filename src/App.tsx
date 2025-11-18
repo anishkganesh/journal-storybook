@@ -163,7 +163,7 @@ Rules:
 
       // Step 4: Generate character description
       addMessage({
-        text: 'Designing the character...',
+        text: 'Designing your character...',
         isUser: false,
         type: 'text'
       })
@@ -187,6 +187,13 @@ Rules:
       })
 
       const characterDesc = charResponse.choices[0]?.message.content || ''
+
+      setProgress(55)
+      addMessage({
+        text: `Character determined: ${characterDesc}`,
+        isUser: false,
+        type: 'text'
+      })
 
       // Step 5: Generate images
       addMessage({
