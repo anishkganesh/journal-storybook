@@ -226,15 +226,15 @@ Rules:
         const prompt = buildPromptFromParsed(sentences[i], parsed, characterDesc, i + 1, sentences.length)
 
         const imageResponse = await openai.images.generate({
-          model: 'dall-e-3',
+          model: 'gpt-image-1',
           prompt: prompt,
           size: '1024x1024',
-          quality: 'standard',
-          style: 'vivid',
+          quality: 'medium',
           n: 1,
         })
 
-        const imageUrl = imageResponse.data?.[0]?.url || ''
+        const b64 = imageResponse.data?.[0]?.b64_json
+        const imageUrl = b64 ? `data:image/png;base64,${b64}` : imageResponse.data?.[0]?.url || ''
         images.push({ sentence: sentences[i], imageUrl })
 
         // Rate limiting
