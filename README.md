@@ -37,8 +37,8 @@ React 19, TypeScript, Vite 7, Tailwind CSS 4, Radix/shadcn-style UI components, 
 Use Node.js/npm compatible with the committed Vite 7 dependency versions.
 
 ```bash
-git clone https://github.com/anishkganesh/cis581.git
-cd cis581
+git clone https://github.com/anishkganesh/journal-storybook.git
+cd journal-storybook
 npm ci
 ```
 
