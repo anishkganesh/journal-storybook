@@ -1,141 +1,92 @@
-# Journal to Storybook ✨
+# Journal Storybook
 
-Transform your handwritten journal entries into beautiful illustrated storybooks using AI!
+An AI-assisted journal-to-storybook interface that turns an uploaded journal image into a short illustrated narrative.
 
-Built with a modern chat-based UI, natural language parsing, and the power of OpenAI's GPT-4o and DALL-E 3.
+## Overview
 
-## 🎨 Features
+This course-project prototype uses a React interface and browser-side OpenAI calls. Its pipeline reads text from an image, writes a four-sentence story, establishes character/style context, and generates an illustration for each sentence.
 
-- **Chat-Based Interface**: Intuitive chat UI with minimal, professional design using Geist font
-- **OCR (Optical Character Recognition)**: Upload photos of handwritten journal entries - AI reads your handwriting using GPT-4o-mini Vision
-- **Natural Language Parsing**: Describe your preferred style in plain English
-  - "Make it anime style with a brave knight"
-  - "Watercolor with soft colors and a young girl"
-  - "3D Pixar style with a playful character"
-- **Smart Story Generation**: Automatically expands your journal into engaging 4-sentence children's stories
-- **DALL-E 3 Image Generation**: Creates 4 beautiful, consistent illustrations
-- **Character Consistency**: Maintains the same character appearance across all images
-- **Multiple Art Styles**: Anime, watercolor, 3D cartoon, storybook, and more via natural language
+## Features
 
-## 💰 Cost Estimate
+- Upload a journal image and provide optional generation instructions.
+- Extract journal text with a vision-capable text model.
+- Generate a short narrative and character description.
+- Generate illustrations using DALL-E 3.
+- Display the result as a storybook in a chat-like interface.
+- Regenerate results, copy text, and download an HTML storybook.
 
-Generating a complete storybook costs approximately **$0.17-0.35**:
-- OCR: ~$0.003 per image
-- Story generation: ~$0.01
-- 4 images (standard quality): $0.16
-- 4 images (HD quality): $0.32
+## Architecture
 
-Much cheaper than traditional illustration services!
+`src/App.tsx` manages image selection, conversation state, staged generation, and rendering. OpenAI GPT-4o-mini is used for image-text extraction and story/character generation; DALL-E 3 supplies images. `src/utils/nlpParser.ts` parses user instructions for preferences. Results live in React state rather than a backend database.
 
-## 🚀 Quick Start
+## Tech stack
 
-### Using the Chat Interface
+React 19, TypeScript, Vite 7, Tailwind CSS 4, Radix/shadcn-style UI components, and the OpenAI JavaScript SDK.
 
-1. **Attach your journal photo** using the paperclip icon
-2. **Optionally add style instructions** like "anime style" or "with a princess character"
-3. **Send** and watch the AI:
-   - Read your handwriting
-   - Generate a story
-   - Create 4 illustrated pages
-   - Display your complete storybook!
+## Project structure
 
-### Example Prompts
+- `src/App.tsx` — interface and generation pipeline.
+- `src/utils/nlpParser.ts` — instruction parsing.
+- `src/components/ui/` — reusable interface components.
+- `src/index.css` and `src/App.css` — styling.
+- `vite.config.ts`, TypeScript configs, and `package.json` — development/build tooling.
+- `vercel.json` and `DEPLOYMENT.md` — static deployment configuration/notes.
 
-- Just upload an image → Default storybook style
-- "Make it anime style" → Studio Ghibli-inspired art
-- "Watercolor with a boy character" → Custom style + character
-- "Pixar 3D with dramatic lighting" → Specific style preferences
+## Run locally
 
-## Technical Details
-
-### Technologies Used
-
-- **Frontend**: React + TypeScript + Vite
-- **UI Components**: shadcn/ui (Tailwind CSS v4)
-- **Typography**: Geist Sans & Geist Mono fonts
-- **Natural Language Processing**: Custom parser for style extraction
-- **AI APIs**: OpenAI (GPT-4o-mini + DALL-E 3)
-- **Deployment**: Vercel-ready configuration
-
-### Workflow
-
-1. **OCR Phase**
-   - Image uploaded and converted to base64
-   - Sent to GPT-4o-mini Vision API with OCR prompt
-   - Text extracted and displayed for editing
-
-2. **Story Generation Phase**
-   - Journal entry sent to GPT-4o-mini
-   - Expanded into 4-sentence children's story
-   - Character description extracted from story
-
-3. **Image Generation Phase**
-   - Each sentence becomes a DALL-E 3 prompt
-   - Character description maintained across all images
-   - Style keywords ensure consistent art style
-   - 2-second delay between generations for rate limiting
-
-## Environment Variables
-
-The OpenAI API key is already configured in `.env.local`
-
-**⚠️ Security Note**: The API key is exposed in the browser (using `dangerouslyAllowBrowser: true`). For production, implement a backend API to secure your API keys.
-
-## Development
+Use Node.js/npm compatible with the committed Vite 7 dependency versions.
 
 ```bash
-# Install dependencies
-npm install
+git clone https://github.com/anishkganesh/cis581.git
+cd cis581
+npm ci
+```
 
-# Start development server
+Create `.env.local` in the application directory:
+
+```dotenv
+VITE_OPENAI_API_KEY=your-openai-key
+```
+
+```bash
 npm run dev
+```
 
-# Build for production
+Open the address printed by Vite, normally `http://localhost:5173`.
+
+The root application is the entry point described here. `journal-storybook/` is a second committed application copy; inspect that copy's own package/configuration before running it separately.
+
+## Configuration and data
+
+The application explicitly enables browser access to OpenAI with `dangerouslyAllowBrowser: true`. Vite variables are bundled into client code: **this API key is visible to anyone who can load the built application**. Use a restricted local development key. A public production demo requires a server-side credential boundary, which is not part of this snapshot.
+
+Image uploads and generation require outbound access to OpenAI and models enabled for your account. Generated image URLs may expire; downloading the HTML does not bundle image bytes, so the file's remote images may later become unavailable.
+
+## Usage
+
+Attach an image of a journal entry, add optional style/content instructions, and submit. Review the extracted narrative and images, then copy text or download the HTML storybook. Generated details can diverge from the source journal.
+
+## Validation
+
+```bash
+npm run lint
 npm run build
-
-# Preview production build
 npm run preview
 ```
 
-## Project Structure
+No automated test suite is configured. Check uploads, each generation stage, error handling, regeneration, and HTML download using your local credentials. This documentation review did not execute paid image/text generation or claim these checks passed.
 
-```
-journal-storybook/
-├── src/
-│   ├── components/ui/     # shadcn/ui components
-│   ├── lib/               # utility functions
-│   ├── App.tsx            # main application
-│   ├── index.css          # Tailwind CSS
-│   └── main.tsx           # entry point
-├── .env.local             # environment variables (API key)
-├── components.json        # shadcn/ui configuration
-├── package.json
-└── vite.config.ts
-```
+## Deployment
 
-## Future Improvements
+The frontend builds to `dist/` for static hosting. The committed Vercel notes describe that build, but the current client-side secret handling is unsuitable for publishing a reusable private API key. Configure a backend boundary before offering a public credential-backed demo.
 
-- Add backend API to secure OpenAI API key
-- Add download/export functionality for storybook
-- Support for multiple journal entries in one session
-- PDF export of complete storybook
-- Image editing and regeneration options
-- Save/load previous storybooks
-- More art styles and customization options
+## Limitations
 
-## Troubleshooting
+- OCR, narratives, and illustrations are model-generated and can be inaccurate.
+- Each story invokes several paid API operations.
+- Conversation state is not persisted in a database.
+- Downloaded HTML references externally hosted image URLs.
 
-**Issue**: OCR not working
-- Check that your API key is valid
-- Ensure the image is clear and legible
-- Try with a different image format
+## Attribution and license
 
-**Issue**: Images not generating
-- Check your OpenAI account has sufficient credits
-- Verify rate limits haven't been exceeded
-- Wait 2-3 seconds between generations
-
-**Issue**: Story quality is poor
-- Edit the extracted text to be more descriptive
-- Try uploading a clearer photo
-- Manual entry works too!
+This is a course-project prototype; generated content and dependencies retain applicable provider terms. No standalone license file is included; this README does not grant a new license.
